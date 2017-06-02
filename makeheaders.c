@@ -1,3 +1,39 @@
+/*
+
+ COMPILATION:
+
+    gcc -pipe -ansi -pedantic-errors \
+      -Wall -Werror -Wextra -Wpedantic -Wstrict-prototypes -Wmissing-prototypes \
+      -Wold-style-definition -Wconversion -Wshadow -Winit-self -Wfloat-equal -Wwrite-strings \
+      *EXTRA_ARGS* -o makeheaders makeheaders.c
+
+     EXTRA_ARGS:
+
+   + testing:                      "-O0 -gdwarf -g3 -fvar-tracking -fvar-tracking-assignments"
+   + post-testing gcc stack-check: "-O0 -fstack-check"
+   + final (example, my machine):  "-O3 -mavx2 -fomit-frame-pointer"
+
+ TESTING:
+
+     MEMCHECK (heap bounds-checks/use-after-frees, heap/stack use uninitialized):
+
+   $ valgrind --verbose --smc-check=all --vgdb=full --track-fds=yes \
+       --read-inline-info=yes --read-var-info=yes --fair-sched=try --num-callers=40 \
+       --tool=memcheck \
+       --trace-children=yes --leak-check=full --leak-resolution=high --show-leak-kinds=all --track-origins=yes \
+       --keep-stacktraces=alloc-and-free --show-mismatched-frees=yes \
+       ./makeheaders [OPTS] [c-file] [..c-file]
+
+     SGCHECK (stack/globals bounds-checks) - EXPERIMENTAL!:
+
+   $ valgrind --verbose --smc-check=all --vgdb=full --track-fds=yes \
+       --read-inline-info=yes --read-var-info=yes --fair-sched=try --num-callers=40 \
+       --tool=exp-sgcheck \
+       --trace-children=yes \
+       ./makeheaders [OPTS] [c-file] [..c-file]
+
+*/
+
 static const char ident[] = "@(#) $Header: /cvstrac/cvstrac/makeheaders.c,v 1.4 2005/03/16 22:17:51 drh Exp $";
 /*
 ** This program is free software; you can redistribute it and/or
