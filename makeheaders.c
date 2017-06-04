@@ -119,7 +119,7 @@ static int debugMask = 0;
 typedef struct Token Token;
 struct Token {
   const char *zText;      /* The text of the token */
-  int nText;              /* Number of characters in the token's text */
+  size_t nText;           /* Number of characters in the token's text */
   int eType;              /* The type of this token */
   int nLine;              /* The line number on which the token starts */
   Token *pComment;        /* Most recent block comment before this token */
@@ -134,7 +134,7 @@ struct Token {
 typedef struct InStream InStream;
 struct InStream {
   const char *z;          /* Complete text of the input */
-  int i;                  /* Next character to read from the input */
+  size_t i;               /* Next character to read from the input */
   int nLine;              /* The line number for character z[i] */
 };
 
@@ -337,8 +337,8 @@ struct InFile {
 */
 typedef struct String String;
 struct String {
-  int nAlloc;      /* Number of bytes allocated */
-  int nUsed;       /* Number of bytes used (not counting null terminator) */
+  size_t nAlloc;   /* Number of bytes allocated */
+  size_t nUsed;    /* Number of bytes used (not counting null terminator) */
   char *zText;     /* Text of the string */
 };
 
@@ -441,10 +441,10 @@ static void CantHappen(int iLine){
 /*
 ** Memory allocation functions that are guaranteed never to return NULL.
 */
-static void *SafeMalloc(int nByte){
+static void *SafeMalloc(size_t nByte){
   void *p = malloc( nByte );
   if( p==0 ){
-    fprintf(stderr,"Out of memory.  Can't allocate %d bytes.\n",nByte);
+    fprintf(stderr,"Out of memory.  Can't allocate %lu bytes.\n",(unsigned long int)nByte);
     exit(1);
   }
   return p;
@@ -454,7 +454,7 @@ static void SafeFree(void *pOld){
     free(pOld);
   }
 }
-static void *SafeRealloc(void *pOld, int nByte){
+static void *SafeRealloc(void *pOld, size_t nByte){
   void *p;
   if( pOld==0 ){
     p = SafeMalloc(nByte);
@@ -462,13 +462,13 @@ static void *SafeRealloc(void *pOld, int nByte){
     p = realloc(pOld, nByte);
     if( p==0 ){
       fprintf(stderr,
-        "Out of memory.  Can't enlarge an allocation to %d bytes\n",nByte);
+        "Out of memory.  Can't enlarge an allocation to %lu bytes\n",(unsigned long int)nByte);
       exit(1);
     }
   }
   return p;
 }
-static char *StrDup(const char *zSrc, int nByte){
+static char *StrDup(const char *zSrc, size_t nByte){
   char *zDest;
   if( nByte<=0 ){
     nByte = strlen(zSrc);
@@ -496,7 +496,7 @@ static void StringReset(String *pStr){
   SafeFree(pStr->zText);
   StringInit(pStr);
 }
-static void StringAppend(String *pStr, const char *zText, int nByte){
+static void StringAppend(String *pStr, const char *zText, size_t nByte){
   if( nByte<=0 ){
     nByte = strlen(zText);
   }
@@ -519,7 +519,7 @@ static void StringAppend(String *pStr, const char *zText, int nByte){
 ** Compute a hash on a string.  The number returned is a non-negative
 ** value between 0 and 2**31 - 1
 */
-static int Hash(const char *z, int n){
+static int Hash(const char *z, size_t n){
   int h = 0;
   if( n<=0 ){
     n = strlen(z);
@@ -535,7 +535,7 @@ static int Hash(const char *z, int n){
 ** identifier in the hash table.  If found, return a pointer to
 ** the Decl structure.  If not found, return 0.
 */
-static Decl *FindDecl(const char *zName, int len){
+static Decl *FindDecl(const char *zName, size_t len){
   int h;
   Decl *p;
 
@@ -622,14 +622,14 @@ static char *GetIfString(void){
 */
 static Decl *CreateDecl(
   const char *zName,       /* Name of the object being declared. */
-  int nName                /* Length of the name */
+  size_t nName             /* Length of the name */
 ){
   Decl *pDecl;
 
   pDecl = SafeMalloc( sizeof(Decl) + nName + 1);
   memset(pDecl,0,sizeof(Decl));
   pDecl->zName = (char*)&pDecl[1];
-  sprintf(pDecl->zName,"%.*s",nName,zName);
+  sprintf(pDecl->zName,"%.*s",(int)nName,zName);
   pDecl->zFile = zFilename;
   pDecl->pInclude = includeList;
   pDecl->zIf = GetIfString();
@@ -645,7 +645,7 @@ static Decl *CreateDecl(
 static int IdentTableInsert(
   IdentTable *pTable,       /* The table into which we will insert */
   const char *zId,          /* Name of the identifiers */
-  int nId                   /* Length of the identifier name */
+  size_t nId                /* Length of the identifier name */
 ){
   int h;
   Ident *pId;
@@ -662,7 +662,7 @@ static int IdentTableInsert(
   }
   pId = SafeMalloc( sizeof(Ident) + nId + 1 );
   pId->zName = (char*)&pId[1];
-  sprintf(pId->zName,"%.*s",nId,zId);
+  sprintf(pId->zName,"%.*s",(int)nId,zId);
   pId->pNext = pTable->pList;
   pTable->pList = pId;
   pId->pCollide = pTable->apTable[h];
@@ -678,7 +678,7 @@ static int IdentTableInsert(
 static int IdentTableTest(
   IdentTable *pTable,       /* The table in which to search */
   const char *zId,          /* Name of the identifiers */
-  int nId                   /* Length of the identifier name */
+  size_t nId                /* Length of the identifier name */
 ){
   int h;
   Ident *pId;
@@ -734,7 +734,7 @@ static char *ReadFile(const char *zFilename){
   struct stat sStat;
   FILE *pIn;
   char *zBuf;
-  int n;
+  size_t n;
 
   if( stat(zFilename,&sStat)!=0 
 #ifndef WIN32
@@ -747,8 +747,8 @@ static char *ReadFile(const char *zFilename){
   if( pIn==0 ){
     return 0;
   }
-  zBuf = SafeMalloc( sStat.st_size + 1 );
-  n = fread(zBuf,1,sStat.st_size,pIn);
+  zBuf = SafeMalloc( (size_t)sStat.st_size + 1 );
+  n = fread(zBuf,1,(size_t)sStat.st_size,pIn);
   zBuf[n] = 0;
   fclose(pIn);
   return zBuf;
@@ -802,7 +802,7 @@ static int WriteFile(const char *zFilename, const char *zOutput){
 ** CPU time on a typical run of makeheaders.
 */
 static int GetToken(InStream *pIn, Token *pToken){
-  int i;
+  size_t i;
   const char *z;
   int cStart;
   int c;
@@ -1141,7 +1141,7 @@ static void FindIdentifiersInMacro(Token *pToken, IdentTable *pTable){
 */
 static int GetBigToken(InStream *pIn, Token *pToken, IdentTable *pTable){
   const char *z, *zStart;
-  int iStart;
+  size_t iStart;
   int nBrace;
   int c;
   int nLine;
@@ -1254,7 +1254,7 @@ static Token *TokenizeFile(const char *zFile, IdentTable *pTable){
     pNew = SafeMalloc( sizeof(Token) );
     nErr += GetBigToken(&sIn,pNew,pTable);
     debug3(TOKENIZER, "Token on line %d: [%.*s]\n",
-       pNew->nLine, pNew->nText<50 ? pNew->nText : 50, pNew->zText);
+       pNew->nLine, pNew->nText<50 ? (int)pNew->nText : 50, pNew->zText);
     if( pFirst==0 ){
       pFirst = pLast = pNew;
       pNew->pPrev = 0;
@@ -1279,7 +1279,7 @@ static Token *TokenizeFile(const char *zFile, IdentTable *pTable){
 /*
 ** Use the following routine to test or debug the tokenizer.
 */
-void main(int argc, char **argv){
+int main(int argc, char **argv){
   char *zFile;
   Token *pList, *p;
   IdentTable sTable;
@@ -1302,10 +1302,10 @@ void main(int argc, char **argv){
         printf("%4d: Space\n",p->nLine);
         break;
       case TT_Id:
-        printf("%4d: Id           %.*s\n",p->nLine,p->nText,p->zText);
+        printf("%4d: Id           %.*s\n",p->nLine,(int)p->nText,p->zText);
         break;
       case TT_Preprocessor:
-        printf("%4d: Preprocessor %.*s\n",p->nLine,p->nText,p->zText);
+        printf("%4d: Preprocessor %.*s\n",p->nLine,(int)p->nText,p->zText);
         break;
       case TT_Comment:
         printf("%4d: Comment\n",p->nLine);
@@ -1314,16 +1314,16 @@ void main(int argc, char **argv){
         printf("%4d: Block Comment\n",p->nLine);
         break;
       case TT_Number:
-        printf("%4d: Number       %.*s\n",p->nLine,p->nText,p->zText);
+        printf("%4d: Number       %.*s\n",p->nLine,(int)p->nText,p->zText);
         break;
       case TT_String:
-        printf("%4d: String       %.*s\n",p->nLine,p->nText,p->zText);
+        printf("%4d: String       %.*s\n",p->nLine,(int)p->nText,p->zText);
         break;
       case TT_Other:
-        printf("%4d: Other        %.*s\n",p->nLine,p->nText,p->zText);
+        printf("%4d: Other        %.*s\n",p->nLine,(int)p->nText,p->zText);
         break;
       case TT_Braces:
-        for(j=0; j<p->nText && j<30 && p->zText[j]!='\n'; j++){}
+        for(j=0; (size_t)j<p->nText && j<30 && p->zText[j]!='\n'; j++){}
         printf("%4d: Braces       %.*s...}\n",p->nLine,j,p->zText);
         break;
       case TT_EOF:
@@ -1352,13 +1352,13 @@ static void PrintTokens(Token *pFirst, Token *pLast){
   while( pFirst!=pLast ){
     switch( pFirst->eType ){
       case TT_Preprocessor:
-        printf("\n%.*s\n",pFirst->nText,pFirst->zText);
+        printf("\n%.*s\n",(int)pFirst->nText,pFirst->zText);
         needSpace = 0;
         break;
 
       case TT_Id:
       case TT_Number:
-        printf("%s%.*s", needSpace ? " " : "", pFirst->nText, pFirst->zText);
+        printf("%s%.*s", needSpace ? " " : "", (int)pFirst->nText, pFirst->zText);
         needSpace = 1;
         break;
 
@@ -1366,7 +1366,7 @@ static void PrintTokens(Token *pFirst, Token *pLast){
         c = pFirst->zText[0];
         printf("%s%.*s", 
           (needSpace && (c=='*' || c=='{')) ? " " : "",
-          pFirst->nText, pFirst->zText);
+          (int)pFirst->nText, pFirst->zText);
         needSpace = pFirst->zText[0]==',';
         break;
     }
@@ -1542,7 +1542,7 @@ static int ProcessTypeDecl(Token *pList, int flags, int *pReset){
 #ifdef DEBUG
   if( debugMask & PARSER ){
     printf("**** Found type: %.*s %.*s...\n",
-      pList->nText, pList->zText, pName->nText, pName->zText);
+      (int)pList->nText, pList->zText, (int)pName->nText, pName->zText);
     PrintTokens(pList,pEnd);
     printf(";\n");
   }
@@ -1687,7 +1687,7 @@ static Token *FindDeclName(Token *pFirst, Token *pLast){
        "union", "volatile", "virtual", "void", };
   
       if( !isInit ){
-        int i;
+        unsigned int i;
         for(i=0; i<sizeof(aWords)/sizeof(aWords[0]); i++){
           IdentTableInsert(&sReserved,aWords[i],0);
         }
@@ -1824,7 +1824,7 @@ static int ProcessProcedureDef(Token *pFirst, Token *pLast, int flags){
   */
 #ifdef DEBUG
   if( debugMask & PARSER ){
-    printf("**** Found routine: %.*s on line %d...\n", pName->nText,
+    printf("**** Found routine: %.*s on line %d...\n", (int)pName->nText,
        pName->zText, pFirst->nLine);
     PrintTokens(pFirst,pLast);
     printf(";\n");
@@ -1884,7 +1884,7 @@ static int ProcessInlineProc(Token *pFirst, int flags, int *pReset){
 #ifdef DEBUG
   if( debugMask & PARSER ){
     printf("**** Found inline routine: %.*s on line %d...\n", 
-       pName->nText, pName->zText, pFirst->nLine);
+       (int)pName->nText, pName->zText, pFirst->nLine);
     PrintTokens(pFirst,pEnd);
     printf("\n");
   }
@@ -2013,13 +2013,13 @@ static int ProcessDecl(Token *pFirst, Token *pEnd, int flags){
   if( debugMask & PARSER ){
     if( flags & PS_Typedef ){
       printf("**** Found typedef %.*s at line %d...\n",
-        pName->nText, pName->zText, pName->nLine);
+        (int)pName->nText, pName->zText, pName->nLine);
     }else if( isVar ){
       printf("**** Found variable %.*s at line %d...\n",
-        pName->nText, pName->zText, pName->nLine);
+        (int)pName->nText, pName->zText, pName->nLine);
     }else{
       printf("**** Found prototype %.*s at line %d...\n",
-        pName->nText, pName->zText, pName->nLine);
+        (int)pName->nText, pName->zText, pName->nLine);
     }
     PrintTokens(pFirst,pEnd->pPrev);
     printf(";\n");
@@ -2059,12 +2059,12 @@ static int ProcessDecl(Token *pFirst, Token *pEnd, int flags){
 static void PushIfMacro(
   const char *zPrefix,      /* A prefix, like "define" or "!" */
   const char *zText,        /* The condition */
-  int nText,                /* Number of characters in zText */
+  size_t nText,             /* Number of characters in zText */
   int nLine,                /* Line number where this macro occurs */
   int flags                 /* Either 0, PS_Interface, PS_Export or PS_Local */
 ){
   Ifmacro *pIf;
-  int nByte;
+  size_t nByte;
 
   nByte = sizeof(Ifmacro);
   if( zText ){
@@ -2077,9 +2077,9 @@ static void PushIfMacro(
   if( zText ){
     pIf->zCondition = (char*)&pIf[1];
     if( zPrefix ){
-      sprintf(pIf->zCondition,"%s(%.*s)",zPrefix,nText,zText);
+      sprintf(pIf->zCondition,"%s(%.*s)",zPrefix,(int)nText,zText);
     }else{
-      sprintf(pIf->zCondition,"%.*s",nText,zText);
+      sprintf(pIf->zCondition,"%.*s",(int)nText,zText);
     }
   }else{
     pIf->zCondition = 0;
@@ -2111,7 +2111,7 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
   const char *zCmd;
   int nCmd;
   const char *zArg;
-  int nArg;
+  size_t nArg;
   int nErr = 0;
   Ifmacro *pIf;
 
@@ -2155,7 +2155,7 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
     pDecl->pComment = pToken->pComment;
     DeclSetProperty(pDecl,TY_Macro);
     pDecl->zDecl = SafeMalloc( pToken->nText + 2 );
-    sprintf(pDecl->zDecl,"%.*s\n",pToken->nText,pToken->zText);
+    sprintf(pDecl->zDecl,"%.*s\n",(int)pToken->nText,pToken->zText);
     if( flags & PS_Export ){
       DeclSetProperty(pDecl,DP_Export);
     }else if( flags & PS_Local ){
@@ -2184,14 +2184,14 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
       pInclude = SafeMalloc( sizeof(Include) + nArg*2 + strlen(zIf) + 10 );
       pInclude->zFile = (char*)&pInclude[1];
       pInclude->zLabel = &pInclude->zFile[nArg+1];
-      sprintf(pInclude->zFile,"%.*s",nArg,zArg);
-      sprintf(pInclude->zLabel,"%.*s:%s",nArg,zArg,zIf);
+      sprintf(pInclude->zFile,"%.*s",(int)nArg,zArg);
+      sprintf(pInclude->zLabel,"%.*s:%s",(int)nArg,zArg,zIf);
       pInclude->zIf = &pInclude->zLabel[nArg+1];
       SafeFree(zIf);
     }else{
       pInclude = SafeMalloc( sizeof(Include) + nArg + 1 );
       pInclude->zFile = (char*)&pInclude[1];
-      sprintf(pInclude->zFile,"%.*s",nArg,zArg);
+      sprintf(pInclude->zFile,"%.*s",(int)nArg,zArg);
       pInclude->zIf = 0;
       pInclude->zLabel = pInclude->zFile;
     }
@@ -2207,7 +2207,7 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
       zArg++;
     }
     if( *zArg==0 || *zArg=='\n' ){ return 0; }
-    nArg = pToken->nText + (int)(pToken->zText - zArg);
+    nArg = (size_t)(pToken->nText + pToken->zText - zArg);
     if( nArg==9 && strncmp(zArg,"INTERFACE",9)==0 ){
       PushIfMacro(0,0,0,pToken->nLine,PS_Interface);
     }else if( nArg==16 && strncmp(zArg,"EXPORT_INTERFACE",16)==0 ){
@@ -2226,7 +2226,7 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
       zArg++;
     }
     if( *zArg==0 || *zArg=='\n' ){ return 0; }
-    nArg = pToken->nText + (int)(pToken->zText - zArg);
+    nArg = (size_t)(pToken->nText + pToken->zText - zArg);
     PushIfMacro("defined",zArg,nArg,pToken->nLine,0);
   }else if( nCmd==6 && strncmp(zCmd,"ifndef",6)==0 ){
     /*
@@ -2237,7 +2237,7 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
       zArg++;
     }
     if( *zArg==0 || *zArg=='\n' ){ return 0; }
-    nArg = pToken->nText + (int)(pToken->zText - zArg);
+    nArg = (size_t)(pToken->nText + pToken->zText - zArg);
     PushIfMacro("!defined",zArg,nArg,pToken->nLine,0);
   }else if( nCmd==4 && strncmp(zCmd,"else",4)==0 ){
     /*
@@ -2484,7 +2484,7 @@ static int ParseFile(Token *pList, int initFlags){
 ** have to be inserted into the class definition.
 */
 static void InsertExtraDecl(Decl *pDecl){
-  int i;
+  size_t i;
   String str;
 
   if( pDecl==0 || pDecl->zExtra==0 || pDecl->zDecl==0 ) return;
@@ -2785,7 +2785,7 @@ static void ScanText(
       */
       DeclareObject(pDecl,pState,needFullDecl);
     }else if( sToken.eType==TT_Preprocessor ){
-      sIn.i -= sToken.nText - 1;
+      sIn.i -= (unsigned int)sToken.nText - 1;
     }
   }
   /* printf("END SCANTEXT\n"); */
@@ -2919,7 +2919,7 @@ static int MakeGlobalHeader(int forExport){
 ** first newline.
 */
 static int ClipTrailingNewline(char *z){
-  int n = strlen(z);
+  int n = (int)strlen(z);
   while( n>0 && (z[n-1]=='\n' || z[n-1]=='\r') ){ n--; }
   return n;
 }
@@ -2959,7 +2959,7 @@ static void DumpDeclList(void){
         { DP_Local,       "local" },
         { DP_Cplusplus,   "C++" },
       };
-      int i;
+      unsigned int i;
       printf("flags:");
       for(i=0; i<sizeof(flagSet)/sizeof(flagSet[0]); i++){
         if( flagSet[i].mask & pDecl->flags ){
@@ -3004,7 +3004,7 @@ static void DocumentationDump(void){
   };
 
   for(pDecl = pDeclFirst; pDecl; pDecl=pDecl->pNext){
-    int i;
+    unsigned int i;
     int nLabel = 0;
     char *zDecl;
     char zLabel[50];
@@ -3018,19 +3018,19 @@ static void DocumentationDump(void){
     InsertExtraDecl(pDecl);
     zDecl = pDecl->zDecl;
     if( zDecl==0 ) zDecl = pDecl->zFwd;
-    printf("%s %s %s %p %d %d %d %d %d\n",
+    printf("%s %s %s %p %lu %d %d %d %lu\n",
        pDecl->zName,
        zLabel,
        pDecl->zFile,
-       pDecl->pComment,
-       pDecl->pComment ? pDecl->pComment->nText+1 : 0,
+       (void *)pDecl->pComment,
+       pDecl->pComment ? (unsigned long int)pDecl->pComment->nText+1 : 0,
        pDecl->zIf ? (int)strlen(pDecl->zIf)+1 : 0,
        zDecl ? (int)strlen(zDecl) : 0,
        pDecl->pComment ? pDecl->pComment->nLine : 0,
-       pDecl->tokenCode.nText ? pDecl->tokenCode.nText+1 : 0
+       pDecl->tokenCode.nText ? (unsigned long int)pDecl->tokenCode.nText+1 : 0
     );
     if( pDecl->pComment ){
-      printf("%.*s\n",pDecl->pComment->nText, pDecl->pComment->zText);
+      printf("%.*s\n",(int)pDecl->pComment->nText, pDecl->pComment->zText);
     }
     if( pDecl->zIf ){
       printf("%s\n",pDecl->zIf);
@@ -3039,7 +3039,7 @@ static void DocumentationDump(void){
       printf("%s",zDecl);
     }
     if( pDecl->tokenCode.nText ){
-      printf("%.*s\n",pDecl->tokenCode.nText, pDecl->tokenCode.zText);
+      printf("%.*s\n",(int)pDecl->tokenCode.nText, pDecl->tokenCode.zText);
     }
   }
 }
@@ -3067,10 +3067,10 @@ static void PrintModuleRecord(const char *zFile, const char *zFilename){
 ** object.
 */
 static InFile *CreateInFile(char *zArg, int *pnErr){
-  int nSrc;
+  size_t nSrc;
   char *zSrc;
   InFile *pFile;
-  int i;
+  size_t i;
 
   /* 
   ** Get the name of the input file to be scanned.  The input file is
@@ -3100,7 +3100,7 @@ static InFile *CreateInFile(char *zArg, int *pnErr){
   ** If a separate header file is specified, use it
   */
   if( zSrc[nSrc]==':' ){
-    int nHdr;
+    size_t nHdr;
     char *zHdr;
     zHdr = &zSrc[nSrc+1];
     for(nHdr=0; zHdr[nHdr] && zHdr[nHdr]!=':'; nHdr++){}
@@ -3176,7 +3176,7 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
   int nAlloc = 0;         /* Space allocated for zNew[] */
   int i;                  /* Loop counter */
   int n;                  /* Number of characters in a new argument */
-  int c;                  /* Next character of input */
+  char c;                 /* Next character of input */
   int startOfLine = 1;    /* True if we are where '#' can start a comment */
   FILE *in;               /* The input file */
   char zBuf[1000];        /* A single argument is accumulated here */
@@ -3194,18 +3194,18 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
       if( c=='\n' ){
         startOfLine = 1;
       }
-      c = getc(in); 
+      c = (char)getc(in); 
       if( startOfLine && c=='#' ){
         while( c!=EOF && c!='\n' ){
-          c = getc(in);
+          c = (char)getc(in);
         }
       }
     }
     n = 0;
     while( c!=EOF && !isspace(c) ){
-      if( n<sizeof(zBuf)-1 ){ zBuf[n++] = c; }
+      if( n<(int)sizeof(zBuf)-1 ){ zBuf[n++] = c; }
       startOfLine = 0;
-      c = getc(in);
+      c = (char)getc(in);
     }
     zBuf[n] = 0;
     if( n>0 ){
@@ -3213,17 +3213,17 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
       if( nNew + argc > nAlloc ){
         if( nAlloc==0 ){
           nAlloc = 100 + argc;
-          zNew = malloc( sizeof(char*) * nAlloc );
+          zNew = malloc( sizeof(char*) * (size_t)nAlloc );
         }else{
           nAlloc *= 2;
-          zNew = realloc( zNew, sizeof(char*) * nAlloc );  
+          zNew = realloc( zNew, sizeof(char*) * (size_t)nAlloc );  
         }
       }
       if( zNew ){
         int j = nNew + index;
-        zNew[j] = malloc( n + 1 );
+        zNew[j] = malloc( (size_t)n + 1 );
         if( zNew[j] ){
-          strcpy( zNew[j], zBuf );
+          strcpy( zNew[j], (char *)zBuf );
         }
       }
     }
@@ -3323,7 +3323,7 @@ int main(int argc, char **argv){
         case 'f':   AddParameters(i, &argc, &argv); break;
         case '-':   noMoreFlags = 1;   break;
 #ifdef DEBUG
-        case '!':   i++;  debugMask = strtol(argv[i],0,0); break;
+        case '!':   i++;  debugMask = (int)strtol(argv[i],0,0); break;
 #endif
         default:    Usage(argv[0],argv[i]); return 1;
       }
