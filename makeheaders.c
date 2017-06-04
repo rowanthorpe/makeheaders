@@ -3049,7 +3049,7 @@ static void DocumentationDump(void){
 ** documentation record for the header comment at the beginning of the
 ** file (if the file has a header comment.)
 */
-void PrintModuleRecord(const char *zFile, const char *zFilename){
+static void PrintModuleRecord(const char *zFile, const char *zFilename){
   int i;
   static int addr = 5;
   while( isspace(*zFile) ){ zFile++; }
