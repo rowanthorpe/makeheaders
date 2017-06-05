@@ -3210,15 +3210,15 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
       if( nNew + argc > nAlloc ){
         if( nAlloc==0 ){
           nAlloc = 100 + argc;
-          zNew = malloc( sizeof(char*) * (size_t)nAlloc );
+          zNew = SafeMalloc( sizeof(char*) * (size_t)nAlloc );
         }else{
           nAlloc *= 2;
-          zNew = realloc( zNew, sizeof(char*) * (size_t)nAlloc );  
+          zNew = SafeRealloc( zNew, sizeof(char*) * (size_t)nAlloc );  
         }
       }
       if( zNew ){
         int j = nNew + index;
-        zNew[j] = malloc( (size_t)n + 1 );
+        zNew[j] = SafeMalloc( (size_t)n + 1 );
         if( zNew[j] ){
           strcpy( zNew[j], (char *)zBuf );
         }
