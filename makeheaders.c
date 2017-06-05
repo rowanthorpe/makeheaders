@@ -580,6 +580,21 @@ static void InstallDecl(Decl *pDecl){
   }
 }
 
+static void FreeDeclList(Decl *pList){
+  Decl *pNext;
+
+  while( pList ){
+    pNext = pList->pNext;
+    SafeFree(pList->zFwd);
+    SafeFree(pList->zFwdCpp);
+    SafeFree(pList->zIf);
+    SafeFree(pList->zDecl);
+    SafeFree(pList->zName);
+    SafeFree(pList);
+    pList = pNext;
+  }
+}
+
 /*
 ** Look at the current ifStack.  If anything declared at the current
 ** position must be surrounded with
@@ -626,9 +641,9 @@ static Decl *CreateDecl(
 ){
   Decl *pDecl;
 
-  pDecl = SafeMalloc( sizeof(Decl) + nName + 1);
+  pDecl = SafeMalloc( sizeof(Decl) );
   memset(pDecl,0,sizeof(Decl));
-  pDecl->zName = (char*)&pDecl[1];
+  pDecl->zName = SafeMalloc( nName + 1 );
   sprintf(pDecl->zName,"%.*s",(int)nName,zName);
   pDecl->zFile = zFilename;
   pDecl->pInclude = includeList;
@@ -660,8 +675,8 @@ static int IdentTableInsert(
       return 0;
     }
   }
-  pId = SafeMalloc( sizeof(Ident) + nId + 1 );
-  pId->zName = (char*)&pId[1];
+  pId = SafeMalloc( sizeof(Ident) );
+  pId->zName = SafeMalloc( nId + 1 );
   sprintf(pId->zName,"%.*s",(int)nId,zId);
   pId->pNext = pTable->pList;
   pTable->pList = pId;
@@ -703,6 +718,7 @@ static void IdentTableReset(IdentTable *pTable){
   Ident *pId, *pNext;
 
   for(pId = pTable->pList; pId; pId = pNext){
+    SafeFree(pId->zName);
     pNext = pId->pNext;
     SafeFree(pId);
   }
@@ -1050,6 +1066,8 @@ static int GetNonspaceToken(InStream *pIn, Token *pToken){
        pToken->nLine,pToken->eType,nIf,pToken->nText,
        pToken->eType!=TT_Space ? pToken->zText : "<space>"); */
     pToken->pComment = blockComment;
+    SafeFree(blockComment);
+    blockComment = 0;
     switch( pToken->eType ){
       case TT_Comment:
       case TT_Space:
@@ -1217,14 +1235,13 @@ static int GetBigToken(InStream *pIn, Token *pToken, IdentTable *pTable){
 }
 
 /*
-** This routine frees up a list of Tokens.  The pComment tokens are
-** not cleared by this.  So we leak a little memory when using the -doc
-** option.  So what.
+** This routine frees up a list of Tokens.
 */
 static void FreeTokenList(Token *pList){
   Token *pNext;
   while( pList ){
     pNext = pList->pNext;
+    SafeFree(pList->pComment);
     SafeFree(pList);
     pList = pNext;
   }
@@ -1241,13 +1258,12 @@ static void FreeTokenList(Token *pList){
 */
 static Token *TokenizeFile(const char *zFile, IdentTable *pTable){
   InStream sIn;
-  Token *pFirst = 0, *pLast = 0, *pNew;
+  Token *pFirst = 0, *pLast = 0, *pNew = 0;
   int nErr = 0;
 
   sIn.z = zFile;
   sIn.i = 0;
   sIn.nLine = 1;
-  blockComment = 0;
 
   while( sIn.z[sIn.i]!=0 ){
     pNew = SafeMalloc( sizeof(Token) );
@@ -1265,7 +1281,6 @@ static Token *TokenizeFile(const char *zFile, IdentTable *pTable){
     if( pNew->eType==TT_EOF ) break;
   }
   if( pLast ) pLast->pNext = 0;
-  blockComment = 0;
   if( nErr ){
     FreeTokenList(pFirst);
     pFirst = 0;
@@ -1336,6 +1351,8 @@ int main(int argc, char **argv){
   FreeTokenList(pList);
   SafeFree(zFile);
   IdentTablePrint(&sTable,stdout);
+  IdentTableReset(&sTable);
+  exit(0);
 }
 #endif
 
@@ -1695,6 +1712,7 @@ static Token *FindDeclName(Token *pFirst, Token *pLast){
       if( !IdentTableTest(&sReserved,p->zText,p->nText) ){
         pName = p;
       }
+      IdentTableReset(&sReserved);
     }else if( p==pFirst ){
       continue;
     }else if( (c=p->zText[0])=='[' && pName ){
@@ -2271,6 +2289,16 @@ static int ParsePreprocessor(Token *pToken, int flags, int *pPresetFlags){
   return nErr;
 }
 
+static void FreeIncludeList(Include *pList){
+  Include *pNext;
+
+  while( pList ){
+    pNext = pList->pNext;
+    SafeFree(pList);
+    pList = pNext;
+  }
+}
+
 /*
 ** Parse an entire file.  Return the number of errors.
 **
@@ -2466,6 +2494,7 @@ static int ParseFile(Token *pList, int initFlags){
     fprintf(stderr,"%s:%d: This '#if' has no '#endif'\n",zFilename,
       pIf->nLine);
     SafeFree(pIf);
+    pIf = 0; /* not needed? */
   }
 
   return nErr;
@@ -3164,22 +3193,22 @@ static InFile *CreateInFile(char *zArg){
 ** kind.  The length of a token is limited to about 1000 characters.
 */
 static void AddParameters(int index, int *pArgc, char ***pArgv){
-  int argc = *pArgc;      /* The original argc value */
-  char **argv = *pArgv;   /* The original argv value */
-  int newArgc;            /* Value for argc after inserting new arguments */
-  char **zNew = 0;        /* The new argv after this routine is done */
+  int newArgc = 0;        /* Value for argc after inserting new arguments */
+  char **newArgv = 0;     /* The new argv after this routine is done */
   char *zFile;            /* Name of the input file */
   int nNew = 0;           /* Number of new entries in the argv[] file */
-  int nAlloc = 0;         /* Space allocated for zNew[] */
+  int nAlloc = 0;         /* Space allocated for newArgv[] */
+  int nAllocDelta = 0;    /* Allocation-space to add for new parameters */
   int i;                  /* Loop counter */
   int n;                  /* Number of characters in a new argument */
   char c;                 /* Next character of input */
   int startOfLine = 1;    /* True if we are where '#' can start a comment */
   FILE *in;               /* The input file */
   char zBuf[1000];        /* A single argument is accumulated here */
+  int j = 0;              /* Buffer-var for DRY purposes */
 
-  if( index+1==argc ) return;
-  zFile = argv[index+1];
+  if( index+1==*pArgc ) return;
+  zFile = (*pArgv)[index+1];
   in = fopen(zFile,"r");
   if( in==0 ){
     fprintf(stderr,"Can't open input file \"%s\"\n",zFile);
@@ -3212,34 +3241,32 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
     zBuf[n] = 0;
     if( n>0 ){
       nNew++;
-      if( nNew + argc > nAlloc ){
-        if( nAlloc==0 ){
-          nAlloc = 100 + argc;
-          zNew = SafeMalloc( sizeof(char*) * (size_t)nAlloc );
-        }else{
-          nAlloc *= 2;
-          zNew = SafeRealloc( zNew, sizeof(char*) * (size_t)nAlloc );  
+      if( index + nNew + 1 > nAlloc ){
+        nAllocDelta = (nNew > 100 ? nNew + 100 : 100);
+        if( nAlloc==0 ) { /* first alloc */
+          nAlloc = index + 1 + nAllocDelta;
+          newArgv = SafeMalloc( sizeof(char*) * (size_t)nAlloc );
+        } else {
+          nAlloc += nAllocDelta;
+          newArgv = SafeRealloc( newArgv, sizeof(char*) * (size_t)nAlloc );
         }
       }
-      if( zNew ){
-        int j = nNew + index;
-        zNew[j] = SafeMalloc( (size_t)n + 1 );
-        if( zNew[j] ){
-          strcpy( zNew[j], (char *)zBuf );
-        }
-      }
+      j = nNew + index;
+      newArgv[j] = SafeMalloc( (size_t)n + 1 );
+      strcpy( newArgv[j], (char *)zBuf );
     }
   }
-  newArgc = argc + nNew - 1;
-  for(i=0; i<=index; i++){
-    zNew[i] = argv[i];
+  fclose(in);
+  if (nNew) {
+    newArgc = index + 1 + nNew; /* use (index + 1) instead of argc, in case of trailing args */
+    for(i=0; i<=index; i++){
+      newArgv[i] = SafeMalloc( strlen((*pArgv)[i]) + 1 );
+      strcpy( newArgv[i], (char *)(*pArgv)[i] );
+    }
+    newArgv[newArgc] = 0;
+    *pArgc = newArgc;
+    *pArgv = newArgv;
   }
-  for(i=nNew + index + 1; i<newArgc; i++){
-    zNew[i] = argv[i + 1 - nNew];
-  }
-  zNew[newArgc] = 0;
-  *pArgc = newArgc;
-  *pArgv = zNew;
 }
 
 #ifdef NOT_USED
@@ -3300,20 +3327,56 @@ static char zInit[] =
 ;
 
 #if TEST==0
-int main(int argc, char **argv){
+static void cleanup(InFile *pFileListS, Token **pListS, int pListCountS, char **zFileS, int zFileCountS, int argvUpdatedS, int oldArgcS, char **oldArgvS, int *newArgc, char ***newArgv){
   int i;                /* Loop counter */
-  int nErr = 0;         /* Number of errors encountered */
-  Token *pList;         /* List of input tokens for one file */
-  InFile *pFileList = 0;/* List of all input files */
-  InFile *pTail = 0;    /* Last file on the list */
-  InFile *pFile;        /* for looping over the file list */
-  int h_flag = 0;       /* True if -h is present.  Output unified header */
-  int H_flag = 0;       /* True if -H is present.  Output EXPORT header */
-  int v_flag = 0;       /* Verbose */
-  int noMoreFlags;      /* True if -- has been seen. */
-  FILE *report;         /* Send progress reports to this, if not NULL */
+  InFile *pFile = 0;    /* For looping over the file list */
+  InFile *pNext = 0;    /* For when looping while freeing files */
 
-  noMoreFlags = 0;
+  for (pListCountS--; pListCountS >= 0; pListCountS--)
+    FreeTokenList(pListS[pListCountS]);
+  SafeFree(pListS);
+  for (pFile=pFileListS; pFile; pFile=pNext){
+    SafeFree(pFile->zHdr);
+    SafeFree(pFile->zSrc);
+    IdentTableReset(&pFile->idTable);
+    pNext = pFile->pNext;
+    SafeFree(pFile);
+  }
+  for (zFileCountS--; zFileCountS >= 0; zFileCountS--)
+    SafeFree(zFileS[zFileCountS]);
+  SafeFree(zFileS);
+  FreeDeclList(pDeclFirst);
+  FreeIncludeList(includeList);
+  if (argvUpdatedS) {
+    for (i=0; i<*newArgc; i++)
+      free((*newArgv)[i]);
+    free(*newArgv);
+    *newArgc = oldArgcS;
+    *newArgv = oldArgvS;
+  }
+}
+
+int main(int argc, char **argv){
+  int     i;               /* Loop counter */
+  int     nErr = 0;        /* Number of errors encountered */
+  Token **pList = 0;       /* List of lists of input tokens for one file */
+  int     pListCount = 0;  /* Number of input token list-of-lists */
+  size_t  pListAlloc = 0;  /* Memory allocated for input token list of lists */
+  InFile *pFileList = 0;   /* List of all input files */
+  InFile *pTail = 0;       /* Last file on the list */
+  InFile *pFile = 0;       /* For looping over the file list */
+  int     h_flag = 0;      /* True if -h is present.  Output unified header */
+  int     H_flag = 0;      /* True if -H is present.  Output EXPORT header */
+  int     v_flag = 0;      /* Verbose */
+  int     noMoreFlags = 0; /* True if -- has been seen. */
+  FILE   *report;          /* Send progress reports to this, if not NULL */
+  int     oldArgc = argc;  /* Old argc replaced by using -f [file] */
+  char  **oldArgv = argv;  /* Old argv replaced by using -f [file] */
+  int     argvUpdated = 0; /* Marker that -f [file] has been used */
+  char  **zFile = 0;       /* List of buffers for file(s) contents */
+  int     zFileCount = 0;  /* Number of list of buffers for file(s) contents */
+  size_t  zFileAlloc = 0;  /* Memory allocated for list of buffers for file(s) contents */
+  
   for(i=1; i<argc; i++){
     if( argv[i][0]=='-' && !noMoreFlags ){
       switch( argv[i][1] ){
@@ -3322,7 +3385,13 @@ int main(int argc, char **argv){
         case 'v':   v_flag = 1;   break;
         case 'd':   doc_flag = 1; proto_static = 1; break;
         case 'l':   proto_static = 1; break;
-        case 'f':   AddParameters(i, &argc, &argv); break;
+        case 'f':
+          if (argvUpdated) {
+            fprintf(stderr, "-f can not be specified in a file included by -f\n");
+            exit(1);
+          } else {
+            AddParameters(i, &argc, &argv); argvUpdated = 1; break;
+          }
         case '-':   noMoreFlags = 1;   break;
 #ifdef DEBUG
         case '!':   i++;  debugMask = (int)strtol(argv[i],0,0); break;
@@ -3333,7 +3402,8 @@ int main(int argc, char **argv){
       pFile = CreateInFile(argv[i]);
       if( pFile ){
         if( pFileList ){
-          pTail->pNext = pFile;
+          if( pTail )
+            pTail->pNext = pFile;
           pTail = pFile;
         }else{
           pFileList = pTail = pFile;
@@ -3352,29 +3422,37 @@ int main(int argc, char **argv){
   }else{
     report = 0;
   }
-  if( nErr>0 ){
-    return nErr;
-  }
+  zFileAlloc = 128;
+  zFile = SafeMalloc(sizeof(char *) * zFileAlloc);
+  pListAlloc = 128;
+  pList = SafeMalloc(sizeof(Token *) * pListAlloc);
   for(pFile=pFileList; pFile; pFile=pFile->pNext){
-    char *zFile;
-
     zFilename = pFile->zSrc;
     if( zFilename==0 ) continue;
-    zFile = ReadFile(zFilename);
-    if( zFile==0 ){
+    if ((size_t)zFileCount == zFileAlloc) {
+      zFileAlloc += 128;
+      zFile = SafeRealloc(zFile, sizeof(char *) * zFileAlloc);
+    }
+    zFile[zFileCount] = ReadFile(zFilename);
+    if( zFile[zFileCount]==0 ){
       fprintf(stderr,"Can't read input file \"%s\"\n",zFilename);
       nErr++;
       continue;
     }
-    if( strncmp(zFile,zTopLine,nTopLine)==0 ){
+    if( strncmp(zFile[zFileCount],zTopLine,nTopLine)==0 ){
+      SafeFree(pFile->zSrc);
       pFile->zSrc = 0;
     }else{
       if( report ) fprintf(report,"Reading %s...\n",zFilename);
-      pList = TokenizeFile(zFile,&pFile->idTable);
-      if( pList ){
-        nErr += ParseFile(pList,pFile->flags);
-        FreeTokenList(pList);
-      }else if( zFile[0]==0 ){
+      if ((size_t)pListCount == pListAlloc) {
+	pListAlloc += 128;
+	pList = SafeRealloc(pList, sizeof(Token *) * pListAlloc);
+      }
+      pList[pListCount] = TokenizeFile(zFile[zFileCount],&pFile->idTable);
+      if( pList[pListCount] ){
+        nErr += ParseFile(pList[pListCount],pFile->flags);
+	pListCount++;
+      }else if( zFile[zFileCount][0]==0 ){
         fprintf(stderr,"Input file \"%s\" is empty.\n", zFilename);
         nErr++;
       }else{
@@ -3382,29 +3460,37 @@ int main(int argc, char **argv){
         nErr++;
       }
     }
-    if( !doc_flag ) SafeFree(zFile);
-    if( doc_flag ) PrintModuleRecord(zFile,zFilename);
+    if( doc_flag ) PrintModuleRecord(zFile[zFileCount],zFilename);
+    zFileCount++;
   }
   if( nErr>0 ){
+    cleanup(pFileList, pList, pListCount, zFile, zFileCount, argvUpdated, oldArgc, oldArgv, &argc, &argv);
     return nErr;
   }
 #ifdef DEBUG
   if( debugMask & DECL_DUMP ){
     DumpDeclList();
+    cleanup(pFileList, pList, pListCount, zFile, zFileCount, argvUpdated, oldArgc, oldArgv, &argc, &argv);
     return nErr;
   }
 #endif
   if( doc_flag ){
     DocumentationDump();
+    cleanup(pFileList, pList, pListCount, zFile, zFileCount, argvUpdated, oldArgc, oldArgv, &argc, &argv);
     return nErr;
   }
   zFilename = "--internal--";
-  pList = TokenizeFile(zInit,0);
-  if( pList==0 ){
+  if ((size_t)pListCount == pListAlloc) {
+    pListAlloc += 128;
+    pList = SafeRealloc(pList, sizeof(Token *) * pListAlloc);
+  }
+  pList[pListCount] = TokenizeFile(zInit,0);
+  if( pList[pListCount]==0 ){
+    cleanup(pFileList, pList, pListCount, zFile, zFileCount, argvUpdated, oldArgc, oldArgv, &argc, &argv);
     return nErr+1;
   }
-  ParseFile(pList,PS_Interface);
-  FreeTokenList(pList);
+  ParseFile(pList[pListCount],PS_Interface);
+  pListCount++;
   if( h_flag || H_flag ){
     nErr += MakeGlobalHeader(H_flag);
   }else{
@@ -3413,6 +3499,7 @@ int main(int argc, char **argv){
       nErr += MakeHeader(pFile,report,0);
     }
   }
+  cleanup(pFileList, pList, pListCount, zFile, zFileCount, argvUpdated, oldArgc, oldArgv, &argc, &argv);
   return nErr;
 }
 #endif
