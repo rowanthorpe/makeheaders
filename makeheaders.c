@@ -376,6 +376,7 @@ const char zTopLine[] =
 */
 static char const *zFilename;
 
+#if TEST==0
 /*
 ** The stack of #if macros for the file currently being parsed.
 */
@@ -386,6 +387,7 @@ static Ifmacro *ifStack = 0;
 ** parsed.
 */
 static Include *includeList = 0;
+#endif
 
 /*
 ** The last block comment seen.
@@ -398,6 +400,7 @@ static Token *blockComment = 0;
 */
 static int doc_flag = 0;
 
+#if TEST==0
 /*
 ** If the following flag is set, then makeheaders will attempt to
 ** generate prototypes for static functions and procedures.
@@ -410,6 +413,7 @@ static int proto_static = 0;
 */
 static Decl *pDeclFirst;    /* First on the list */
 static Decl *pDeclLast;     /* Last on the list */
+#endif
 
 /*
 ** A hash table of all declarations
@@ -550,6 +554,7 @@ static Decl *FindDecl(const char *zName, size_t len){
   return p;
 }
 
+#if TEST==0
 /*
 ** Install the given declaration both in the hash table and on
 ** the list of all declarations.
@@ -651,6 +656,7 @@ static Decl *CreateDecl(
   InstallDecl(pDecl);
   return pDecl;
 }
+#endif
 
 /*
 ** Insert a new identifier into an table of identifiers.  Return TRUE if
@@ -686,6 +692,7 @@ static int IdentTableInsert(
   return 1;
 }
 
+#if TEST==0
 /*
 ** Check to see if the given value is in the given IdentTable.  Return
 ** true if it is and false if it is not.
@@ -709,6 +716,7 @@ static int IdentTableTest(
   }
   return 0;
 }
+#endif
 
 /*
 ** Remove every identifier from the given table.   Reset the table to
@@ -725,7 +733,7 @@ static void IdentTableReset(IdentTable *pTable){
   memset(pTable,0,sizeof(IdentTable));
 }
 
-#ifdef DEBUG
+#if TEST==1 && defined(DEBUG)
 /*
 ** Print the name of every identifier in the given table, one per line
 */
@@ -770,6 +778,7 @@ static char *ReadFile(const char *zFilenameS){
   return zBuf;
 }
 
+#if TEST==0
 /*
 ** Write the contents of a string into a file.  Return the number of
 ** errors
@@ -784,6 +793,7 @@ static int WriteFile(const char *zFilenameS, const char *zOutput){
   fclose(pOut);
   return 0;
 }
+#endif
 
 /*
 ** Major token types
@@ -1350,12 +1360,15 @@ int main(int argc, char **argv){
   }
   FreeTokenList(pList);
   SafeFree(zFile);
+#ifdef DEBUG
   IdentTablePrint(&sTable,stdout);
+#endif
   IdentTableReset(&sTable);
   exit(0);
 }
 #endif
 
+#if TEST==0
 #ifdef DEBUG
 /*
 ** For debugging purposes, write out a list of tokens.
@@ -2499,6 +2512,7 @@ static int ParseFile(Token *pList, int initFlags){
 
   return nErr;
 }
+#endif
 
 /*
 ** If the given Decl object has a non-null zExtra field, then the text
@@ -2527,6 +2541,7 @@ static void InsertExtraDecl(Decl *pDecl){
   pDecl->zExtra = 0;
 }
 
+#if TEST==0
 /*
 ** Reset the DP_Forward and DP_Declared flags on all Decl structures.
 ** Set both flags for anything that is tagged as local and isn't 
@@ -2542,6 +2557,7 @@ static void ResetDeclFlags(char const *zFilenameS){
     }
   }
 }
+#endif
 
 /*
 ** Forward declaration of the ScanText() function.
@@ -2817,6 +2833,7 @@ static void ScanText(
   /* printf("END SCANTEXT\n"); */
 }
 
+#if TEST==0
 /*
 ** Provide a full declaration to any object which so far has had only
 ** a foward declaration.
@@ -3268,6 +3285,7 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
     *pArgv = newArgv;
   }
 }
+#endif
 
 #ifdef NOT_USED
 /*
@@ -3285,6 +3303,7 @@ static unsigned int ModTime(const char *zFilenameS){
 }
 #endif
 
+#if TEST==0
 /*
 ** Print a usage comment for this program.
 */
@@ -3326,7 +3345,6 @@ static char zInit[] =
   "#define PROTECTED\n"
 ;
 
-#if TEST==0
 static void cleanup(InFile *pFileListS, Token **pListS, int pListCountS, char **zFileS, int zFileCountS, int argvUpdatedS, int oldArgcS, char **oldArgvS, int *newArgc, char ***newArgv){
   int i;                /* Loop counter */
   InFile *pFile = 0;    /* For looping over the file list */
