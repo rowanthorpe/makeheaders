@@ -2843,7 +2843,7 @@ static void ScanText(
 #if TEST==0
 /*
 ** Provide a full declaration to any object which so far has had only
-** a foward declaration.
+** a forward declaration.
 */
 static void CompleteForwardDeclarations(GenState *pState){
   Decl *pDecl;
@@ -3214,7 +3214,7 @@ static InFile *CreateInFile(char *zArg){
 **
 ** Parsing of the parameters in the file is very simple.  Parameters
 ** can be separated by any amount of white-space (including newlines
-** and carriage returns.)  There are now quoting characters of any
+** and carriage returns.)  There are no quoting characters of any
 ** kind.  The length of a token is limited to 1023 characters.
 */
 static void AddParameters(int index, int *pArgc, char ***pArgv){
