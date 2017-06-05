@@ -3203,9 +3203,10 @@ static InFile *CreateInFile(char *zArg){
 ** work around.
 **
 ** If the parameters "-f FILENAME" appear anywhere on the command line,
-** then the named file is scanned for additional command line arguments.
+** then the named file is scanned for remaining command line arguments.
 ** These arguments are substituted in place of the "FILENAME" argument
-** in the original argument list.
+** in the original argument list. Any arguments trailing the
+** "-f FILENAME" in the commandline will be overwritten/ignored.
 **
 ** This first parameter to this routine is the index of the "-f"
 ** parameter in the argv[] array.  The argc and argv are passed by
@@ -3337,8 +3338,9 @@ static void Usage(const char *argv0, const char *argvN){
     "              procedures.\n"
   );
   fprintf(stderr,
-    "  -f FILE     Read additional command-line arguments from the file named\n"
-    "              \"FILE\".\n"
+    "  -f FILE     Read all remaining command-line arguments from the file named\n"
+    "              \"FILE\". This must be given at most once, last on the\n"
+    "              commandline.\n"
   );
 #ifdef DEBUG
   fprintf(stderr,
