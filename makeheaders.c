@@ -374,7 +374,7 @@ struct GenState {
 ** by this program.  By recognizing this line, the program can be sure
 ** never to read a file that it generated itself.
 */
-const char zTopLine[] = 
+static char const zTopLine[] = 
   "/* \aThis file was automatically generated.  Do not edit! */\n";
 #define nTopLine (sizeof(zTopLine)-1)
 
