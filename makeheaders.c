@@ -730,20 +730,20 @@ static void IdentTablePrint(IdentTable *pTable, FILE *pOut){
 **
 ** If the read fails for any reason, 0 is returned.
 */
-static char *ReadFile(const char *zFilename){
+static char *ReadFile(const char *zFilenameS){
   struct stat sStat;
   FILE *pIn;
   char *zBuf;
   size_t n;
 
-  if( stat(zFilename,&sStat)!=0 
+  if( stat(zFilenameS,&sStat)!=0 
 #ifndef WIN32
     || !S_ISREG(sStat.st_mode)
 #endif
   ){
     return 0;
   }
-  pIn = fopen(zFilename,"r");
+  pIn = fopen(zFilenameS,"r");
   if( pIn==0 ){
     return 0;
   }
@@ -758,9 +758,9 @@ static char *ReadFile(const char *zFilename){
 ** Write the contents of a string into a file.  Return the number of
 ** errors
 */
-static int WriteFile(const char *zFilename, const char *zOutput){
+static int WriteFile(const char *zFilenameS, const char *zOutput){
   FILE *pOut;
-  pOut = fopen(zFilename,"w");
+  pOut = fopen(zFilenameS,"w");
   if( pOut==0 ){
     return 1;
   }
@@ -2503,12 +2503,12 @@ static void InsertExtraDecl(Decl *pDecl){
 ** Set both flags for anything that is tagged as local and isn't 
 ** in the file zFilename so that it won't be printing in other files.
 */
-static void ResetDeclFlags(char const *zFilename){
+static void ResetDeclFlags(char const *zFilenameS){
   Decl *pDecl;
 
   for(pDecl = pDeclFirst; pDecl; pDecl = pDecl->pNext){
     DeclClearProperty(pDecl,DP_Forward|DP_Declared);
-    if( DeclHasProperty(pDecl,DP_Local) && pDecl->zFile!=zFilename ){
+    if( DeclHasProperty(pDecl,DP_Local) && pDecl->zFile!=zFilenameS ){
       DeclSetProperty(pDecl,DP_Forward|DP_Declared);
     }
   }
@@ -3046,7 +3046,7 @@ static void DocumentationDump(void){
 ** documentation record for the header comment at the beginning of the
 ** file (if the file has a header comment.)
 */
-static void PrintModuleRecord(const char *zFile, const char *zFilename){
+static void PrintModuleRecord(const char *zFile, const char *zFilenameS){
   int i;
   static int addr = 5;
   while( isspace(*zFile) ){ zFile++; }
@@ -3054,7 +3054,7 @@ static void PrintModuleRecord(const char *zFile, const char *zFilename){
   for(i=2; zFile[i] && (zFile[i-1]!='/' || zFile[i-2]!='*'); i++){}
   if( zFile[i]==0 ) return;
   printf("%s M %s %d %d 0 0 0 0\n%.*s\n",
-    zFilename, zFilename, addr, i+1, i, zFile);
+    zFilenameS, zFilenameS, addr, i+1, i, zFile);
   addr += 4;
 }
 
@@ -3243,10 +3243,10 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
 ** locate the file (because, for example, it doesn't exist), then
 ** return 0.
 */
-static unsigned int ModTime(const char *zFilename){
+static unsigned int ModTime(const char *zFilenameS){
   unsigned int mTime = 0;
   struct stat sStat;
-  if( stat(zFilename,&sStat)==0 ){
+  if( stat(zFilenameS,&sStat)==0 ){
     mTime = sStat.st_mtime;
   }
   return mTime;
