@@ -1140,7 +1140,7 @@ static void FindIdentifiersInMacro(Token *pToken, IdentTable *pTable){
 ** unterminated token.
 */
 static int GetBigToken(InStream *pIn, Token *pToken, IdentTable *pTable){
-  const char *z, *zStart;
+  const char *zStart;
   size_t iStart;
   int nBrace;
   int c;
@@ -1169,7 +1169,6 @@ static int GetBigToken(InStream *pIn, Token *pToken, IdentTable *pTable){
       return nErr;
   }
 
-  z = pIn->z;
   iStart = pIn->i;
   zStart = pToken->zText;
   nLine = pToken->nLine;
@@ -1715,14 +1714,12 @@ static Token *FindDeclName(Token *pFirst, Token *pLast){
 ** added to their class definitions.
 */
 static int ProcessMethodDef(Token *pFirst, Token *pLast, int flags){
-  Token *pCode;
   Token *pClass;
   char *zDecl;
   Decl *pDecl;
   String str;
   int type;
 
-  pCode = pLast;
   pLast = pLast->pPrev;
   while( pFirst->zText[0]=='P' ){
     int rc = 1;
@@ -3066,7 +3063,7 @@ static void PrintModuleRecord(const char *zFile, const char *zFilename){
 ** Given an input argument to the program, construct a new InFile
 ** object.
 */
-static InFile *CreateInFile(char *zArg, int *pnErr){
+static InFile *CreateInFile(char *zArg){
   size_t nSrc;
   char *zSrc;
   InFile *pFile;
@@ -3328,7 +3325,7 @@ int main(int argc, char **argv){
         default:    Usage(argv[0],argv[i]); return 1;
       }
     }else{
-      pFile = CreateInFile(argv[i],&nErr);
+      pFile = CreateInFile(argv[i]);
       if( pFile ){
         if( pFileList ){
           pTail->pNext = pFile;
