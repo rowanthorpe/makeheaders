@@ -3200,7 +3200,12 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
     }
     n = 0;
     while( c!=EOF && !isspace(c) ){
-      if( n<(int)sizeof(zBuf)-1 ){ zBuf[n++] = c; }
+      if( n<(int)sizeof(zBuf)-1 ){
+        zBuf[n++] = c;
+      } else {
+        fprintf(stderr, "Argument too big in file \"%s\":\n%s\n", zFile, zBuf);
+        exit(1);
+      }
       startOfLine = 0;
       c = (char)getc(in);
     }
@@ -3333,6 +3338,9 @@ int main(int argc, char **argv){
         }else{
           pFileList = pTail = pFile;
         }
+      } else {
+        fprintf(stderr, "Invalid input file: %s\n", argv[1]);
+        return 1;
       }
     }
   }
