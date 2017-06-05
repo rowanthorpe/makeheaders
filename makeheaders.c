@@ -3263,7 +3263,7 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
       c = (char)getc(in);
     }
     zBuf[n] = 0;
-    if( n>0 ){
+    if( n!=0 ){
       nNew++;
       if( index + nNew + 1 > nAlloc ){
         nAllocDelta = (nNew > 100 ? nNew + 100 : 100);
