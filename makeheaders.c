@@ -3214,7 +3214,7 @@ static InFile *CreateInFile(char *zArg){
 ** Parsing of the parameters in the file is very simple.  Parameters
 ** can be separated by any amount of white-space (including newlines
 ** and carriage returns.)  There are now quoting characters of any
-** kind.  The length of a token is limited to about 1000 characters.
+** kind.  The length of a token is limited to 1023 characters.
 */
 static void AddParameters(int index, int *pArgc, char ***pArgv){
   int newArgc = 0;        /* Value for argc after inserting new arguments */
@@ -3228,7 +3228,7 @@ static void AddParameters(int index, int *pArgc, char ***pArgv){
   char c;                 /* Next character of input */
   int startOfLine = 1;    /* True if we are where '#' can start a comment */
   FILE *in;               /* The input file */
-  char zBuf[1000];        /* A single argument is accumulated here */
+  char zBuf[1024];        /* A single argument is accumulated here */
   int j = 0;              /* Buffer-var for DRY purposes */
 
   if( index+1==*pArgc ) return;
