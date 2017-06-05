@@ -158,7 +158,7 @@ struct Decl {
   char *zName;       /* Name of the object being declared.  The appearance
                      ** of this name is a source file triggers the declaration
                      ** to be added to the header for that file. */
-  char *zFile;       /* File from which extracted.  */
+  char const *zFile; /* File from which extracted.  */
   char *zIf;         /* Surround the declaration with this #if */
   char *zFwd;        /* A forward declaration.  NULL if there is none. */
   char *zFwdCpp;     /* Use this forward declaration for C++. */
@@ -374,7 +374,7 @@ const char zTopLine[] =
 /*
 ** The name of the file currently being parsed.
 */
-static char *zFilename;
+static char const *zFilename;
 
 /*
 ** The stack of #if macros for the file currently being parsed.
@@ -1390,7 +1390,7 @@ static void PrintTokens(Token *pFirst, Token *pLast){
 static char *TokensToString(
   Token *pFirst,    /* First token in the string */
   Token *pLast,     /* Last token in the string */
-  char *zTerm,      /* Terminate the string with this text if not NULL */
+  char const *zTerm,/* Terminate the string with this text if not NULL */
   Token *pSkip,     /* Skip this token if not NULL */
   int nSkip         /* Skip a total of this many tokens */
 ){
@@ -1679,7 +1679,7 @@ static Token *FindDeclName(Token *pFirst, Token *pLast){
     if( p->eType==TT_Id ){
       static IdentTable sReserved;
       static int isInit = 0;
-      static char *aWords[] = { "char", "class", 
+      static char const *aWords[] = { "char", "class",
        "const", "double", "enum", "extern", "EXPORT", "ET_PROC", 
        "float", "int", "long",
        "PRIVATE", "PROTECTED", "PUBLIC",
@@ -2506,7 +2506,7 @@ static void InsertExtraDecl(Decl *pDecl){
 ** Set both flags for anything that is tagged as local and isn't 
 ** in the file zFilename so that it won't be printing in other files.
 */
-static void ResetDeclFlags(char *zFilename){
+static void ResetDeclFlags(char const *zFilename){
   Decl *pDecl;
 
   for(pDecl = pDeclFirst; pDecl; pDecl = pDecl->pNext){
@@ -2826,7 +2826,7 @@ static int MakeHeader(InFile *pFile, FILE *report, int nolocal_flag){
   String outStr;
   IdentTable includeTable;
   Ident *pId;
-  char *zNewVersion;
+  char const *zNewVersion;
   char *zOldVersion;
 
   if( pFile->zHdr==0 || *pFile->zHdr==0 ) return 0;
@@ -2839,7 +2839,7 @@ static int MakeHeader(InFile *pFile, FILE *report, int nolocal_flag){
   sState.nErr = 0;
   sState.zFilename = pFile->zSrc;
   sState.flags = pFile->flags & DP_Cplusplus;
-  ResetDeclFlags(nolocal_flag ? "no" : pFile->zSrc);
+  ResetDeclFlags(nolocal_flag ? "no" : (char const *)pFile->zSrc);
   for(pId = pFile->idTable.pList; pId; pId=pId->pNext){
     Decl *pDecl = FindDecl(pId->zName,0);
     if( pDecl ){
@@ -2945,7 +2945,7 @@ static void DumpDeclList(void){
     if( pDecl->flags ){
       static struct {
         int mask;
-        char *desc;
+        char const *desc;
       } flagSet[] = {
         { TY_Class,       "class" },
         { TY_Enumeration, "enum" },
