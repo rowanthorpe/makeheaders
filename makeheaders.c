@@ -1,4 +1,45 @@
 /*
+** This program has had fixes and tweaks on top of the original program.
+** See the README file for authorship.
+*/
+
+/*
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the Simplified BSD License (also
+** known as the "2-Clause License" or "FreeBSD License".)
+**
+** Copyright 1993 D. Richard Hipp. All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or
+** without modification, are permitted provided that the following
+** conditions are met:
+**
+**   1. Redistributions of source code must retain the above copyright
+**      notice, this list of conditions and the following disclaimer.
+**
+**   2. Redistributions in binary form must reproduce the above copyright
+**      notice, this list of conditions and the following disclaimer in
+**      the documentation and/or other materials provided with the
+**      distribution.
+**
+** This software is provided "as is" and any express or implied warranties,
+** including, but not limited to, the implied warranties of merchantability
+** and fitness for a particular purpose are disclaimed.  In no event shall
+** the author or contributors be liable for any direct, indirect, incidental,
+** special, exemplary, or consequential damages (including, but not limited
+** to, procurement of substitute goods or services; loss of use, data or
+** profits; or business interruption) however caused and on any theory of
+** liability, whether in contract, strict liability, or tort (including
+** negligence or otherwise) arising in any way out of the use of this
+** software, even if advised of the possibility of such damage.
+**
+** This program is distributed in the hope that it will be useful,
+** but without any warranty; without even the implied warranty of
+** merchantability or fitness for a particular purpose.
+** appropriate header files.
+*/
+
+/*
 
  COMPILATION:
 
@@ -42,41 +83,7 @@ static const char ident[] = "@(#) $Header: /cvstrac/cvstrac/makeheaders.c,v 1.4 
 #if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)))
 #pragma GCC diagnostic pop
 #endif
-/*
-** This program is free software; you can redistribute it and/or
-** modify it under the terms of the Simplified BSD License (also
-** known as the "2-Clause License" or "FreeBSD License".)
-**
-** Copyright 1993 D. Richard Hipp. All rights reserved.
-**
-** Redistribution and use in source and binary forms, with or
-** without modification, are permitted provided that the following
-** conditions are met:
-**
-**   1. Redistributions of source code must retain the above copyright
-**      notice, this list of conditions and the following disclaimer.
-**
-**   2. Redistributions in binary form must reproduce the above copyright
-**      notice, this list of conditions and the following disclaimer in
-**      the documentation and/or other materials provided with the
-**      distribution.
-**
-** This software is provided "as is" and any express or implied warranties,
-** including, but not limited to, the implied warranties of merchantability
-** and fitness for a particular purpose are disclaimed.  In no event shall
-** the author or contributors be liable for any direct, indirect, incidental,
-** special, exemplary, or consequential damages (including, but not limited
-** to, procurement of substitute goods or services; loss of use, data or
-** profits; or business interruption) however caused and on any theory of
-** liability, whether in contract, strict liability, or tort (including
-** negligence or otherwise) arising in any way out of the use of this
-** software, even if advised of the possibility of such damage.
-**
-** This program is distributed in the hope that it will be useful,
-** but without any warranty; without even the implied warranty of
-** merchantability or fitness for a particular purpose.
-** appropriate header files.
-*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
