@@ -1461,6 +1461,10 @@ static char *TokensToString(
         needSpace = 0;
         break;
 
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
       case TT_Id: 
         switch( pFirst->zText[0] ){
           case 'E':        
@@ -1483,6 +1487,9 @@ static char *TokensToString(
           pFirst = pFirst->pNext;
           continue;
         }
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)))
+#pragma GCC diagnostic pop
+#endif
         /* Fall thru to the next case */
       case TT_Number:
         if( needSpace ){
