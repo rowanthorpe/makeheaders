@@ -29,7 +29,7 @@ Build instructions
 A [CMake](https://cmake.org) file has been contributed, so if you are in a hurry (or lazy, not
 confident compiling, or whatever), if CMake is installed you can do the following to build a
 standard non-optimized executable and install it to your system's default custom-compilation
-bin-dir (of course CMake must be installed):
+bin-dir:
 
 ```sh
 mkdir build
