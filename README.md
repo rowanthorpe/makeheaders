@@ -14,9 +14,6 @@ upstream authors so they can integrate some or all of the changes if they
 want, which will hopefully make this mirror obsolete. If they accept all
 the changes I will make a clear note of it here.
 
-`makeheaders` is under a Simplified BSD License. See the comments near
-the top of the file for copyright information.
-
 I started making these changes because I came across an error, and
 despite the various fixes I made I ran out of time to diagnose that
 original error, and as it is not a showstopper for me anyway I am just
@@ -61,8 +58,8 @@ Do `./makeheaders --help` for details.
 License
 -------
 
-Makeheaders is under the "2-Clause License" ("FreeBSD License"). See the license-header at the
-top of the `makeheaders.c` file for details.
+`makeheaders` is under the "Simplified BSD License" ("2-Clause License" or "FreeBSD License").
+See the license-header at the top of the `makeheaders.c` file for copyright information.
 
 FIXME
 -----
