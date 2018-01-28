@@ -3323,9 +3323,14 @@ static unsigned int ModTime(const char *zFilenameS){
 ** Print a usage comment for this program.
 */
 static void Usage(const char *argv0, const char *argvN){
-  fprintf(stderr,"%s: Illegal argument \"%s\"\n",argv0,argvN);
+  if (argvN) {
+    fprintf(stderr,"%s: Illegal argument \"%s\"\n",argv0,argvN);
+  }
   fprintf(stderr,"Usage: %s [options] filename...\n",argv0);
   fprintf(stderr,"Options:\n");
+  fprintf(stderr,
+    "  --help      Show this help message.\n"
+  );
   fprintf(stderr,
     "  -h          Generate a single .h to standard output.\n"
   );
@@ -3440,7 +3445,14 @@ int main(int argc, char **argv){
           } else {
             AddParameters(i, &argc, &argv); argvUpdated = 1; break;
           }
-        case '-':   noMoreFlags = 1;   break;
+        case '-':
+          if (!argv[i][2]) {
+            noMoreFlags = 1; break;
+          } else if (!strncmp(&argv[i][2],"help",5) || !strncmp(&argv[i][2],"usage",5)) {
+            Usage(argv[0],NULL); exit(0);
+          } else {
+            Usage(argv[0],argv[i]); return 1;
+          }
 #ifdef DEBUG
         case '!':   i++;  debugMask = (int)strtol(argv[i],0,0); break;
 #endif

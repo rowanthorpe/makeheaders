@@ -53,6 +53,11 @@ Read the comments near the top of `makeheaders.c` to see how I build it with `gc
 mem-testing mode, stack-checking mode, and final mode, and for `valgrind` commandlines for
 testing the resulting executable.
 
+Running instructions
+--------------------
+
+Do `./makeheaders --help` for details.
+
 License
 -------
 
